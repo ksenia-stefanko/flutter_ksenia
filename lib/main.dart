@@ -1,4 +1,8 @@
-import 'package:flutter/material.dart'; 
+import 'package:flutter/material.dart';
+import 'screens/login.dart';
+import 'screens/register.dart';
+import 'screens/profile.dart';
+import 'screens/home.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,7 +19,14 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Магічний Лічильник'),
+      // Використовуємо навігацію між екранами
+      initialRoute: '/login', // Початковий екран
+      routes: {
+        '/login': (context) => LoginPage(),
+        '/register': (context) => RegisterPage(),
+        '/profile': (context) => ProfilePage(),
+        '/home': (context) => HomePage(),
+      },
     );
   }
 }
