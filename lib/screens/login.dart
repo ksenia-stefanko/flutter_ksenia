@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../repositories/user_repository_impl.dart';
 
 class LoginPage extends StatefulWidget {
@@ -11,32 +12,73 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   String _errorMessage = '';
 
-Future<void> _loginUser() async {
-  final email = _emailController.text.trim();
-  final password = _passwordController.text.trim();
+  Future<void> _loginUser() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
 
-  if (email.isEmpty || password.isEmpty) {
-    setState(() {
-      _errorMessage = "Please fill in all fields.";
-    });
-    return;
+    if (email.isEmpty || password.isEmpty) {
+      setState(() {
+        _errorMessage = "Please fill in all fields.";
+      });
+      return;
+    }
+
+    final connectivityResult = await Connectivity().checkConnectivity();
+    if (connectivityResult == ConnectivityResult.none) {
+      _showErrorDialog("No Internet Connection", "Please connect to the internet and try again.");
+      return;
+    }
+
+    final userRepository = UserRepositoryImpl();
+    final user = await userRepository.getUser();
+
+    if (user != null && user['email'] == email && user['password'] == password) {
+      setState(() {
+        _errorMessage = '';
+      });
+      _showSuccessDialog("Login Successful", "Welcome back!");
+    } else {
+      setState(() {
+        _errorMessage = "Invalid email or password.";
+      });
+      _showErrorDialog("Login Failed", "Invalid email or password.");
+    }
   }
 
-  final userRepository = UserRepositoryImpl();
-  final user = await userRepository.getUser();
-
-  if (user != null && user['email'] == email && user['password'] == password) {
-    setState(() {
-      _errorMessage = '';
-    });
-    Navigator.pushNamed(context, '/home');
-  } else {
-    setState(() {
-      _errorMessage = "Invalid email or password.";
-    });
+  void _showSuccessDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/home');
+            },
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
   }
-}
 
+  void _showErrorDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +91,6 @@ Future<void> _loginUser() async {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Логотип або заголовок
               Center(
                 child: Text(
                   "Welcome Back!",
@@ -61,7 +102,6 @@ Future<void> _loginUser() async {
                 ),
               ),
               const SizedBox(height: 20),
-              // Поле вводу email
               Text(
                 "Email",
                 style: TextStyle(
@@ -83,7 +123,6 @@ Future<void> _loginUser() async {
                 ),
               ),
               const SizedBox(height: 16),
-              // Поле вводу паролю
               Text(
                 "Password",
                 style: TextStyle(
@@ -106,7 +145,6 @@ Future<void> _loginUser() async {
                 ),
               ),
               const SizedBox(height: 10),
-              // Відображення помилки
               if (_errorMessage.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
@@ -116,7 +154,6 @@ Future<void> _loginUser() async {
                   ),
                 ),
               const SizedBox(height: 20),
-              // Кнопка "Login"
               Center(
                 child: ElevatedButton(
                   onPressed: _loginUser,
@@ -137,7 +174,6 @@ Future<void> _loginUser() async {
                 ),
               ),
               const SizedBox(height: 20),
-              // Текст для переходу до реєстрації
               Center(
                 child: TextButton(
                   onPressed: () {

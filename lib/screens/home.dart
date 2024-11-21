@@ -1,7 +1,60 @@
 import 'package:flutter/material.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../components/action_button.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
+  @override
+  _HomePageState createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  late ConnectivityResult _connectivityResult;
+  late Stream<ConnectivityResult> _connectivityStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _connectivityStream = Connectivity().onConnectivityChanged;
+    _initializeConnectivity();
+  }
+
+  Future<void> _initializeConnectivity() async {
+    _connectivityResult = await Connectivity().checkConnectivity();
+    if (_connectivityResult == ConnectivityResult.none) {
+      _showNetworkError();
+    }
+    _connectivityStream.listen((result) {
+      if (result == ConnectivityResult.none) {
+        _showNetworkError();
+      }
+    });
+  }
+
+  void _showNetworkError() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("No Internet Connection"),
+        content: const Text(
+          "Your connection to the internet has been lost. Please reconnect to continue.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

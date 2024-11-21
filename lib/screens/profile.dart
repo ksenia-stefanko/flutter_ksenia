@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../repositories/user_repository_impl.dart';
 import '../components/edit_name_dialog.dart';
 import '../components/edit_email_dialog.dart';
 import '../components/action_button.dart';
 import '../components/user_info_block.dart';
+import '../components/logout_confirmation_dialog.dart';
+import '../components/network_error_dialog.dart';
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -12,6 +15,7 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   final UserRepositoryImpl userRepository = UserRepositoryImpl();
+  late ConnectivityResult _connectivityResult;
 
   String userName = "User Name";
   String userEmail = "user@example.com";
@@ -19,7 +23,15 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
+    _checkInternetConnection();
     _loadUserData();
+  }
+
+  Future<void> _checkInternetConnection() async {
+    _connectivityResult = await Connectivity().checkConnectivity();
+    if (_connectivityResult == ConnectivityResult.none) {
+      _showNetworkError();
+    }
   }
 
   Future<void> _loadUserData() async {
@@ -57,13 +69,33 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _handleLogout() async {
-    await userRepository.logout();
-    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    final shouldLogout = await _showLogoutConfirmationDialog();
+    if (shouldLogout) {
+      await userRepository.logout();
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    }
   }
 
   Future<void> _handleDeleteAccount() async {
     await userRepository.clearUser();
     Navigator.pushNamedAndRemoveUntil(context, '/register', (route) => false);
+  }
+
+Future<bool> _showLogoutConfirmationDialog() async {
+  return await showDialog<bool>(
+        context: context,
+        builder: (context) => LogoutConfirmationDialog(
+          onConfirm: () => Navigator.pop(context, true), // Додано
+        ),
+      ) ??
+      false;
+}
+
+  void _showNetworkError() {
+    showDialog(
+      context: context,
+      builder: (context) => const NetworkErrorDialog(),
+    );
   }
 
   @override
