@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../components/action_button.dart';
+import '../components/post_list.dart';
+import '../services/api_service.dart';
+import '../services/cache_service.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -10,12 +13,16 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late ConnectivityResult _connectivityResult;
   late Stream<ConnectivityResult> _connectivityStream;
+  final ApiService apiService = ApiService();
+  final CacheService cacheService = CacheService();
+  late Future<List<Map<String, dynamic>>> postsFuture;
 
   @override
   void initState() {
     super.initState();
     _connectivityStream = Connectivity().onConnectivityChanged;
     _initializeConnectivity();
+    postsFuture = _loadPosts();
   }
 
   Future<void> _initializeConnectivity() async {
@@ -28,6 +35,21 @@ class _HomePageState extends State<HomePage> {
         _showNetworkError();
       }
     });
+  }
+
+  Future<List<Map<String, dynamic>>> _loadPosts() async {
+    try {
+      final posts = await apiService.fetchPosts();
+      await cacheService.savePosts(posts);
+      return posts;
+    } catch (e) {
+      final cachedPosts = await cacheService.getPosts();
+      if (cachedPosts != null) {
+        return List<Map<String, dynamic>>.from(cachedPosts);
+      } else {
+        throw Exception("No internet and no cached data");
+      }
+    }
   }
 
   void _showNetworkError() {
@@ -51,11 +73,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
-  void dispose() {
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
@@ -70,7 +87,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -85,11 +102,14 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 20),
               Text(
-                "Explore your dashboard and manage your account settings. "
-                "Use the button below to view your profile.",
+                "Explore your dashboard and view the latest posts.",
                 style: TextStyle(fontSize: 16, color: Colors.white70),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 20),
+              Expanded(
+                child: PostList(postsFuture: postsFuture), // Використання компонента
+              ),
+              const SizedBox(height: 5),
               Center(
                 child: ActionButton(
                   text: "Go to Profile",
