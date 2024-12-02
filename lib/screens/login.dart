@@ -1,10 +1,89 @@
 import 'package:flutter/material.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import '../repositories/user_repository_impl.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
+  @override
+  _LoginPageState createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  String _errorMessage = '';
+
+  Future<void> _loginUser() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      setState(() {
+        _errorMessage = "Please fill in all fields.";
+      });
+      return;
+    }
+
+    final connectivityResult = await Connectivity().checkConnectivity();
+    if (connectivityResult == ConnectivityResult.none) {
+      _showErrorDialog("No Internet Connection", "Please connect to the internet and try again.");
+      return;
+    }
+
+    final userRepository = UserRepositoryImpl();
+    final user = await userRepository.getUser();
+
+    if (user != null && user['email'] == email && user['password'] == password) {
+      setState(() {
+        _errorMessage = '';
+      });
+      _showSuccessDialog("Login Successful", "Welcome back!");
+    } else {
+      setState(() {
+        _errorMessage = "Invalid email or password.";
+      });
+      _showErrorDialog("Login Failed", "Invalid email or password.");
+    }
+  }
+
+  void _showSuccessDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/home');
+            },
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showErrorDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.indigo[50], // Легкий фон
+      backgroundColor: Colors.indigo[50],
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -12,7 +91,6 @@ class LoginPage extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Логотип або заголовок
               Center(
                 child: Text(
                   "Welcome Back!",
@@ -24,7 +102,6 @@ class LoginPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              // Поле вводу email
               Text(
                 "Email",
                 style: TextStyle(
@@ -35,6 +112,7 @@ class LoginPage extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               TextField(
+                controller: _emailController,
                 decoration: InputDecoration(
                   hintText: 'Enter your email',
                   border: OutlineInputBorder(
@@ -45,7 +123,6 @@ class LoginPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              // Поле вводу паролю
               Text(
                 "Password",
                 style: TextStyle(
@@ -56,6 +133,7 @@ class LoginPage extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               TextField(
+                controller: _passwordController,
                 obscureText: true,
                 decoration: InputDecoration(
                   hintText: 'Enter your password',
@@ -66,15 +144,21 @@ class LoginPage extends StatelessWidget {
                   fillColor: Colors.white,
                 ),
               ),
+              const SizedBox(height: 10),
+              if (_errorMessage.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Text(
+                    _errorMessage,
+                    style: TextStyle(color: Colors.red, fontSize: 14),
+                  ),
+                ),
               const SizedBox(height: 20),
-              // Кнопка "Login"
               Center(
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/home');
-                  },
+                  onPressed: _loginUser,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigo, // Синя кнопка
+                    backgroundColor: Colors.indigo,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -90,7 +174,6 @@ class LoginPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              // Текст для переходу до реєстрації
               Center(
                 child: TextButton(
                   onPressed: () {
