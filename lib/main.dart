@@ -1,4 +1,10 @@
-import 'package:flutter/material.dart'; 
+import 'package:flutter/material.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'screens/login.dart';
+import 'screens/register.dart';
+import 'screens/profile.dart';
+import 'screens/home.dart';
+import 'repositories/user_repository_impl.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,105 +21,72 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Магічний Лічильник'),
+      home: const InitialScreen(),
+      routes: {
+        '/login': (context) => LoginPage(),
+        '/register': (context) => RegisterPage(),
+        '/profile': (context) => ProfilePage(),
+        '/home': (context) => HomePage(),
+      },
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({required this.title, super.key});
-
-  final String title;
+class InitialScreen extends StatefulWidget {
+  const InitialScreen({Key? key}) : super(key: key);
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<InitialScreen> createState() => _InitialScreenState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  final TextEditingController _textController = TextEditingController();
-  int _counter = 0;
-  String _message = '';
-  Color _backgroundColor = Colors.white;
+class _InitialScreenState extends State<InitialScreen> {
+  final UserRepositoryImpl userRepository = UserRepositoryImpl();
+  late ConnectivityResult _connectivityResult;
 
-  final List<Color> _colors = [
-    Colors.red,
-    Colors.blue,
-    Colors.green,
-    Colors.orange,
-    Colors.purple,
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _initializeApp();
+  }
 
-  void _processInput() {
-    setState(() {
-      final input = _textController.text.trim().toLowerCase();
-      if (input.toLowerCase() == 'expecto patronum') {
-        _counter = 0;
-        _message = 'Лічильник обнулено!Патронус відганяє всі числа!';
-      } else if (input == 'alohomora') {
-        _counter *= 2;
-        _message = 'Лічильник подвоєно!';
-      } else if (input == 'colovaria') {
-        _backgroundColor = _colors[_counter % _colors.length];
-        _message = 'Змінено колір фону!';
-      } else {
-        final number = int.tryParse(input);
-        if (number != null) {
-          _counter += number;
-          _message = 'Додано $number до лічильника.';
-        } else {
-          _counter++;
-          _message = 'Невідома команда. Лічильник збільшено на 1.';
-        }
-      }
-      _textController.clear();
-    });
+  Future<void> _initializeApp() async {
+    _connectivityResult = await Connectivity().checkConnectivity();
+    bool isLoggedIn = await userRepository.isLoggedIn();
+
+    if (_connectivityResult == ConnectivityResult.none) {
+      _showNetworkError();
+    } else if (isLoggedIn) {
+      Navigator.pushReplacementNamed(context, '/home');
+    } else {
+      Navigator.pushReplacementNamed(context, '/login');
+    }
+  }
+
+  void _showNetworkError() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("No Internet Connection"),
+        content: const Text(
+          "You are not connected to the internet. Please connect to continue.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pushReplacementNamed(context, '/login');
+            },
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-      ),
-      body: Container(
-        color: _backgroundColor,
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(
-              'Поточне значення:',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineLarge,
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: _textController,
-              decoration: InputDecoration(
-                hintText: 'Введіть число або магічне слово',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onSubmitted: (_) => _processInput(),
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: _processInput,
-              child: const Text('Виконати магію'),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              _message,
-              style: const TextStyle(fontStyle: FontStyle.italic),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+    return const Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(),
       ),
     );
   }
