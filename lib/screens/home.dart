@@ -1,79 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../components/action_button.dart';
 import '../components/post_list.dart';
-import '../services/api_service.dart';
-import '../services/cache_service.dart';
+import '../cubit/post_cubit.dart';
 
-class HomePage extends StatefulWidget {
-  @override
-  _HomePageState createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  late ConnectivityResult _connectivityResult;
-  late Stream<ConnectivityResult> _connectivityStream;
-  final ApiService apiService = ApiService();
-  final CacheService cacheService = CacheService();
-  late Future<List<Map<String, dynamic>>> postsFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _connectivityStream = Connectivity().onConnectivityChanged;
-    _initializeConnectivity();
-    postsFuture = _loadPosts();
-  }
-
-  Future<void> _initializeConnectivity() async {
-    _connectivityResult = await Connectivity().checkConnectivity();
-    if (_connectivityResult == ConnectivityResult.none) {
-      _showNetworkError();
-    }
-    _connectivityStream.listen((result) {
-      if (result == ConnectivityResult.none) {
-        _showNetworkError();
-      }
-    });
-  }
-
-  Future<List<Map<String, dynamic>>> _loadPosts() async {
-    try {
-      final posts = await apiService.fetchPosts();
-      await cacheService.savePosts(posts);
-      return posts;
-    } catch (e) {
-      final cachedPosts = await cacheService.getPosts();
-      if (cachedPosts != null) {
-        return List<Map<String, dynamic>>.from(cachedPosts);
-      } else {
-        throw Exception("No internet and no cached data");
-      }
-    }
-  }
-
-  void _showNetworkError() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("No Internet Connection"),
-        content: const Text(
-          "Your connection to the internet has been lost. Please reconnect to continue.",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: const Text("OK"),
-          ),
-        ],
-      ),
-    );
-  }
+class HomePage extends StatelessWidget {
+  const HomePage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    // Викликаємо fetchPosts при рендері
+    context.read<PostCubit>().fetchPosts();
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -107,7 +45,23 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 20),
               Expanded(
-                child: PostList(postsFuture: postsFuture), // Використання компонента
+                child: BlocBuilder<PostCubit, PostState>(
+                  builder: (context, state) {
+                    if (state is PostLoading) {
+                      return const Center(child: CircularProgressIndicator());
+                    } else if (state is PostLoaded) {
+                      return PostList(posts: state.posts);
+                    } else if (state is PostError) {
+                      return Center(
+                        child: Text(
+                          "Error: ${state.message}",
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      );
+                    }
+                    return const Center(child: Text("No posts available"));
+                  },
+                ),
               ),
               const SizedBox(height: 5),
               Center(
