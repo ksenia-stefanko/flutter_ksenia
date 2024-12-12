@@ -1,33 +1,58 @@
 import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'screens/login.dart';
 import 'screens/register.dart';
 import 'screens/profile.dart';
 import 'screens/home.dart';
 import 'repositories/user_repository_impl.dart';
+import 'services/api_service.dart';
+import 'services/cache_service.dart';
+import 'cubit/user_cubit.dart';
+import 'cubit/post_cubit.dart';
 
 void main() {
-  runApp(const MyApp());
+  final apiService = ApiService();
+  final cacheService = CacheService();
+
+  runApp(MyApp(apiService: apiService, cacheService: cacheService));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final ApiService apiService;
+  final CacheService cacheService;
+
+  const MyApp({
+    Key? key,
+    required this.apiService,
+    required this.cacheService,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Магічний Лічильник',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-        useMaterial3: true,
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (_) => UserCubit(cacheService)..initializeUser(),
+        ),
+        BlocProvider(
+          create: (_) => PostCubit(apiService, cacheService),
+        ),
+      ],
+      child: MaterialApp(
+        title: 'Магічний Лічильник',
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+          useMaterial3: true,
+        ),
+        home: const InitialScreen(),
+        routes: {
+          '/login': (context) => LoginPage(),
+          '/register': (context) => RegisterPage(),
+          '/profile': (context) => ProfilePage(),
+          '/home': (context) => HomePage(),
+        },
       ),
-      home: const InitialScreen(),
-      routes: {
-        '/login': (context) => LoginPage(),
-        '/register': (context) => RegisterPage(),
-        '/profile': (context) => ProfilePage(),
-        '/home': (context) => HomePage(),
-      },
     );
   }
 }
